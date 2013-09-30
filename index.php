@@ -1,11 +1,16 @@
 <?php
 
 include_once __DIR__ . '/vendor/autoload.php';
+// include_once __DIR__ . '/src/procedural.php';
+include_once __DIR__ . '/src/lib/LeapYearController.php';
+include_once __DIR__ . '/src/lib/TemplateController.php';
 
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\Matcher\UrlMatcher;
+use Symfony\Component\Routing\Exception\ResourceNotFoundException;
+use Symfony\Component\HttpKernel\Controller\ControllerResolver;
 
 $request = Request::createFromGlobals();
 
@@ -24,14 +29,19 @@ $context->fromRequest($request);
 $matcher = new UrlMatcher($routes, $context);
 
 try {
-  extract($matcher->match('/'.$path), EXTR_SKIP);
-  ob_start();
-  include sprintf(__DIR__.'/src/pages/%s.php', $_route);
+  $request->attributes->add($matcher->match('/'.$path));
 
-  $response = new Response(ob_get_clean());
-} catch (Symfony\Component\Routing\Exception\ResourceNotFoundException $e) {
+  $resolver = new ControllerResolver();
+  $controller = $resolver->getController($request);
+  $arguments = $resolver->getArguments($request, $controller);
+  $test = '';
+
+  $response = call_user_func_array($controller, $arguments);
+}
+catch (ResourceNotFoundException $e) {
   $response = new Response('Not Found', 404);
-} catch (Exception $e) {
+}
+catch (Exception $e) {
   $response = new Response('An error occurred', 500);
 }
 
